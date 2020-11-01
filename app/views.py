@@ -37,3 +37,27 @@ def allowed_file_filesize(filesize):
         return True
     else:
         return False
+
+def upload():
+    if request.method == "POST":
+        if request.files:
+            if "filesize" in request.cookies:
+                if not allowed_file_filesize(request.cookies["filesize"]):
+                    print("Filesize exceeded maximum limit")
+                    return redirect(request.url)
+            file = request.files["file"]
+
+            if file.filename == "":
+                print("No filename")
+                return redirect(request.url)
+            if allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                os.makedirs(os.path.join(app.instance_path, 'uploads'), exist_ok=True)
+                file.save(os.path.join(app.instance_path, 'uploads', secure_filename(filename)))
+                print("File Saved")
+                return redirect(url_for('upload_file',filename=filename))
+            else:
+                print("That file extension is not allowed.")
+                return redirect(request.url)
+
+xmlDocument = r'instance/uploads/'
