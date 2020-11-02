@@ -61,3 +61,16 @@ def upload():
                 return redirect(request.url)
 
 xmlDocument = r'instance/uploads/'
+
+def xml_to_dataframe(xmlDocument):
+    class_data = []
+    data = []
+
+    for event,elem in ET.iterparse(xmlDocument, events=('start', 'end')):
+        tag = extract_local_tag(elem.tag)
+        if event=='start' and tag=='managedObject':
+            class_data=[elem.get('class').strip(),elem.get('version').strip(),elem.get('distName').strip(),elem.get('id').strip()]
+        
+        if event=='start' and tag=='p':
+            data.append(class_data+[elem.get('name'),elem.text])
+    return df
