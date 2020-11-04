@@ -1,0 +1,75 @@
+<!doctype html>
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+
+  
+  <link rel="stylesheet" href="{{ url_for('static',filename='bootstrap.min.css') }}">
+  
+  <link rel="stylesheet" href="{{ url_for('static',filename='bootstrap-social.css') }}">
+
+ <title>XML Parser</title>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="row">
+    <div class="col">
+
+      <h1>Update your XML File</h1>
+      <hr>
+
+      <form action="http://127.0.0.1:5000/update.html" method="POST" enctype="multipart/form-data">
+        <div class="form-row">
+          <div class="form-group col-md-7">
+            <label>Select File</label>
+            <div class="custom-file">
+              <input type="file" class="custom-file-input" name="file">
+              <label class="custom-file-label" for="file">Select File...</label>
+            </div>
+        
+            <button type="submit" class="form-group btn col-md-3" value="Upload">Upload</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <form action="http://127.0.0.1:5000/xml-view" method="POST">
+    <div class="form-row">
+            
+      <div class="form-group col-md-4">
+                <label for="class_">Class</label>
+                <input class="form-control" type="text" id="class_" name="class_">
+      </div>
+      <div class="form-group col-md-4">
+        <label for="site_id">Site ID</label>
+        <input class="form-control" type="text" id="site_id" name="site_id">
+      </div>
+      <div class="form-group col-md-4">
+                <label for="param_">Parameter</label>
+                <input class="form-control" type="text" id="param_" name="param_">
+      </div>
+      <div class="form-group col-md-4">
+        <label for="values">Values</label>
+        <input class="form-control" type="text" id="values" name="values">
+        </div>
+    </div>
+    <br>
+    <input type="submit" class="btn btn-primary col-md-6" value="Process">
+  </form>
+  <br>
+<!--
+  <div class ="download">
+    <form action="http://127.0.0.1:5000/download/download.xml">
+      <input type="submit" class="btn btn-primary col-md-6" value="Download">
+    </form>
+  </div>
+-->
+<a href="index">Go back to your home page</a>
+</div>
+</body>
+</html>
