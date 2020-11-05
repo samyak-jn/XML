@@ -134,3 +134,19 @@ def updateXML(xmlDocument,class_,sites,param_dict):
     # print(etree.tostring(tree,encoding="unicode", pretty_print=True))
     et.write('app/download/download.xml', pretty_print=True)
     return
+
+@app.route('/download/download.xml', methods=["GET"])
+def plot_xml():
+    path = 'app/download/download.xml'
+    return_data = io.BytesIO()
+    with open(path, 'rb') as fo:
+        return_data.write(fo.read())
+    # (after writing, cursor will be at last byte, so move it to start)
+    return_data.seek(0)
+    os.remove(path)
+    clear_uploads('instance/uploads/')
+    print("File Cleared!")
+    return send_file(return_data,
+                     mimetype='text/xml',
+                     attachment_filename='result.xml',
+                     as_attachment=True)
