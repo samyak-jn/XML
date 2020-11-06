@@ -150,3 +150,22 @@ def plot_xml():
                      mimetype='text/xml',
                      attachment_filename='result.xml',
                      as_attachment=True)
+
+@app.route('/download/update.xlsx', methods=["GET"])
+def update_xlsx():
+    return send_file('download/update.xlsx',
+                     mimetype='text/xlsx',
+                     attachment_filename='update.xlsx',
+                     as_attachment=True)
+@app.route('/bulk_process.html', methods = ['POST'])
+def bulk_process():
+    doc = xmlDocument+'sample.XML'
+    inputDocument=xmlDocument+'Input.csv'
+    bulkupdateXML(doc,inputDocument)
+    return render_template('public/heavy_update.html')
+
+    d = open(download_option, "r")
+    download = str(d.read())
+    text_file = open("app/templates/public/final_xml.html", "w") 
+    text_file.write(download)
+    text_file.close() 
