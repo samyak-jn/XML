@@ -135,6 +135,38 @@ def updateXML(xmlDocument,class_,sites,param_dict):
     et.write('app/download/download.xml', pretty_print=True)
     return
 
+def bulkupdateXML(xmlDocument, inputDocument):
+    df = pd.read_csv(inputDocument)
+    tree = etree.parse(xmlDocument)
+    root =  tree.getroot().findall('*')[0]
+    data = df.values
+    data[:,1] = [i.strip().lower() for i in data[:,1]]
+    data[:,2] = [i.strip().lower() for i in data[:,2]]
+    data[:,0] = [i.strip().split(',') for i in data[:,0]]
+    for elem in tree.findall('//{raml20.xsd}managedObject'):
+            site = elem.get('distName').split('/')[1].split('-')[1].strip()
+            flag = False
+            for row in data:
+                class_ = row[1]
+                sites = row[0]
+                param_list = {row[2]:str(row[3])}
+                if elem.attrib['class'].strip().lower()== class_ and (site in sites) :
+                    flag = True   
+                    for i in elem.findall('*'):
+                        if i.tag!='{raml20.xsd}p':
+                            elem.remove(i)
+                    for p in elem.findall('{raml20.xsd}p'):
+                        if (p.get('name').strip().lower() in param_list):
+                            p.text = param_list.get(p.get('name').strip().lower())
+                        elif (p.get('name').strip().lower() not in data[data[:,1]==class_][:,2]):
+                            elem.remove(p)
+            if flag==False:
+                root.remove(elem)
+    et = etree.ElementTree(tree.getroot())
+    #print(etree.tostring(tree,encoding="unicode", pretty_print=True))
+    et.write('app/download/download.xml', pretty_print=True)
+    return
+
 @app.route('/download/download.xml', methods=["GET"])
 def plot_xml():
     path = 'app/download/download.xml'
@@ -169,3 +201,4 @@ def bulk_process():
     text_file = open("app/templates/public/final_xml.html", "w") 
     text_file.write(download)
     text_file.close() 
+
