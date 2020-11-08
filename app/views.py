@@ -167,6 +167,19 @@ def bulkupdateXML(xmlDocument, inputDocument):
     et.write('app/download/download.xml', pretty_print=True)
     return
 
+
+
+@app.route('/')
+@app.route('/index')
+def index():
+    return render_template("public/index.html")
+
+
+@app.route("/upload-file.html", methods=["GET", "POST"])
+def upload_file():
+    upload()
+    return render_template("public/upload-file.html")
+
 @app.route('/download/download.xml', methods=["GET"])
 def plot_xml():
     path = 'app/download/download.xml'
