@@ -135,6 +135,10 @@ def updateXML(xmlDocument,class_,sites,param_dict):
     et.write('app/download/download.xml', pretty_print=True)
     return
 
+def clear_uploads(path):
+    for file in os.listdir(path):
+        os.remove(path+file)
+
 def bulkupdateXML(xmlDocument, inputDocument):
     df = pd.read_csv(inputDocument)
     tree = etree.parse(xmlDocument)
