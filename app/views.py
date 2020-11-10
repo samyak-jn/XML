@@ -4,23 +4,23 @@ from flask.templating import render_template
 import urllib
 from werkzeug.utils import redirect
 from werkzeug.utils import secure_filename
+import os
 import xml.etree.ElementTree as ET
 import pandas as pd
+from flask.helpers import flash, send_file, send_from_directory, url_for
 from lxml import etree
 import calendar
 import time
+from openpyxl import Workbook
 import re
+import openpyxl
+from lxml import etree as et
 import math
 import io
-
 
 app.config["ALLOWED_FILE_EXTENSIONS"] = {"XML", "CSV", "XLSX", "xlsx"}
 app.config['MAX_CONTENT_LENGTH'] = 700 * 1024 * 1024
 xmlDocument = r'instance/uploads/'
-
-def get_namespace(element):
-    m = re.match('\{.*\}', element.tag)
-    return m.group(0) if m else ''
 
 def allowed_file(filename):
     if not "." in filename:
@@ -62,6 +62,9 @@ def upload():
 
 xmlDocument = r'instance/uploads/'
 
+def extract_local_tag(tagname):
+    return tagname.split('}')[-1].strip()
+
 def xml_to_dataframe(xmlDocument):
     class_data = []
     data = []
@@ -70,9 +73,12 @@ def xml_to_dataframe(xmlDocument):
         tag = extract_local_tag(elem.tag)
         if event=='start' and tag=='managedObject':
             class_data=[elem.get('class').strip(),elem.get('version').strip(),elem.get('distName').strip(),elem.get('id').strip()]
+        
         if event=='start' and tag=='p':
             data.append(class_data+[elem.get('name'),elem.text])
+            
     df = pd.DataFrame(data,columns=['class','version','distName','id','parameter','value'])
+
     return df
 
 def updateXML(xmlDocument,class_,sites,param_dict):
@@ -84,22 +90,28 @@ def updateXML(xmlDocument,class_,sites,param_dict):
 
     tree = etree.parse(xmlDocument)
     root =  tree.getroot().findall('*')[0]
+
     relevent = []
+  
     for elem in tree.findall('//{raml20.xsd}managedObject'):
             site = elem.get('distName').split('/')[1].split('-')[1].strip()
             if elem.attrib['class'].strip().lower()== class_  and (site in sites):
                 relevent.append(elem)
             else:
                 root.remove(elem)
+                
     for elem in relevent:
             for p in elem.findall('{raml20.xsd}p'):
                 if(p.get('name').strip().lower() in param_dict):
                     p.text = param_dict.get(p.get('name').strip().lower())
                 else:
                     elem.remove(p)
-            # For handling list items
+            
+            # For handling list items 
             for param,value in param_for_list.items():
+                
                 items = param.split('-')
+                
                 list_name = items[0].strip().lower()
                 item_name = items[2].strip().lower()
                 try:
@@ -107,16 +119,21 @@ def updateXML(xmlDocument,class_,sites,param_dict):
                 except(ValueError):
                     # case of all
                     item_number = items[1].strip().lower()
+                
+                  
                 for i in elem.findall('{raml20.xsd}list'):
+                
                     if i.get('name').strip().lower()==list_name:
+                        
                         # if a param from all items of a list need to be updated
                         if item_number == "all":
                             for item in i.findall('{raml20.xsd}item'):
                                 for p in item.findall('{raml20.xsd}p'):
                                     if (p.get('name').strip().lower() == item_name.strip().lower()):
-                                        p.text = value
+                                        p.text = value              
                                     if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
                                         item.remove(p)
+                                        
                         # If a particular index of item needs to be updated
                         else:
                             try:
@@ -126,18 +143,15 @@ def updateXML(xmlDocument,class_,sites,param_dict):
                                     if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
                                         i.getchildren()[item_number-1].remove(p)
                             except(IndexError):
-                                # Remove list if item number is wrong
+                                # Remove list if item number is wrong 
                                 print('Index Error for list name:{}'.format(i.get('name')))
                     if (i.get('name').strip().lower() not in [x.split('-')[0].strip().lower() for x in list(param_for_list.keys())]):
                         elem.remove(i)
     et = etree.ElementTree(tree.getroot())
     # print(etree.tostring(tree,encoding="unicode", pretty_print=True))
     et.write('app/download/download.xml', pretty_print=True)
-    return
-
-def clear_uploads(path):
-    for file in os.listdir(path):
-        os.remove(path+file)
+    return 
+        
 
 def bulkupdateXML(xmlDocument, inputDocument):
     df = pd.read_csv(inputDocument)
@@ -172,7 +186,6 @@ def bulkupdateXML(xmlDocument, inputDocument):
     return
 
 
-
 @app.route('/')
 @app.route('/index')
 def index():
@@ -199,6 +212,35 @@ def plot_xml():
                      mimetype='text/xml',
                      attachment_filename='result.xml',
                      as_attachment=True)
+
+def dumpparser(filepath):
+    parameter_tracker = {}
+    rowcol_tracker = {}
+    visited_class = []
+    currently_active_sheet = ''
+    dt_string = calendar.timegm(time.gmtime())
+    dest_filename = str('dump_' + str(dt_string) + '.xlsx')
+    wb = Workbook()
+    ws = ''
+    context = etree.iterparse(filepath, events=('start', 'end'))
+    for event,root in context:
+        namespace = get_namespace(root)
+        if event == "end" and root.tag == str(namespace + 'managedObject'):
+            classname = root.attrib['class']
+            if classname not in visited_class:
+                visited_class.append(classname)
+                ws = wb.create_sheet(title=classname)
+                currently_active_sheet = classname
+                parameter_tracker[classname] = {}
+                rowcol_tracker[classname] = {}
+                rowcol_tracker[classname]['row'] = 1
+                rowcol_tracker[classname]['col'] = 0
+            if currently_active_sheet != classname:
+                ws = wb[classname]
+                currently_active_sheet = classname
+            rowcol_tracker[classname]['row'] = rowcol_tracker[classname]['row'] + 1
+            distName = root.attrib['distName']
+    wb.save(filename='instance/uploads/dump.xlsx')
 
 @app.route('/download/update.xlsx', methods=["GET"])
 def update_xlsx():
