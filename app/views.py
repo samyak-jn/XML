@@ -240,6 +240,40 @@ def dumpparser(filepath):
                         ws.cell(rowcol_tracker[classname]['row'], rowcol_tracker[classname]['col'], dn[1])
                     else:
                         ws.cell(rowcol_tracker[classname]['row'], parameter_tracker[classname][dn[0]], dn[1])
+            for p in root.findall(str(namespace + 'p')):
+                pname = p.attrib['name']
+                if pname not in parameter_tracker[classname]:
+                    rowcol_tracker[classname]['col'] += 1
+                    parameter_tracker[classname][pname] = {}
+                    parameter_tracker[classname][pname] = rowcol_tracker[classname]['col']
+                    ws.cell(1, rowcol_tracker[classname]['col'],pname)
+                ws.cell(rowcol_tracker[classname]['row'],parameter_tracker[classname][pname],p.text)
+            for list in root.findall(str(namespace + 'list')):
+                listname = list.attrib['name']
+                itemcount = 0
+                pcount = 0
+                for item in list.findall(str(namespace + 'item')):
+                    itemcount = itemcount + 1
+                    for p in item.findall(str(namespace + 'p')):
+                        pname = p.attrib['name']
+                        parra = str(listname + ':' + 'item' + str(itemcount) + ':' + pname)
+                        if parra not in parameter_tracker[classname]:
+                            rowcol_tracker[classname]['col'] += 1
+                            parameter_tracker[classname][parra] = {}
+                            parameter_tracker[classname][parra] = rowcol_tracker[classname]['col']
+                            ws.cell(1, rowcol_tracker[classname]['col'], parra)
+                        ws.cell(rowcol_tracker[classname]['row'], parameter_tracker[classname][parra], p.text)
+                for p in list.findall(str(namespace + 'p')):
+                    pcount +=1
+                    pconcat = str(listname + ':p' + str(pcount))
+                    if pconcat not in parameter_tracker[classname]:
+                        rowcol_tracker[classname]['col'] += 1
+                        parameter_tracker[classname][pconcat] = {}
+                        parameter_tracker[classname][pconcat] = rowcol_tracker[classname]['col']
+                        ws.cell(1, rowcol_tracker[classname]['col'], pconcat)
+                    ws.cell(rowcol_tracker[classname]['row'], parameter_tracker[classname][pconcat], p.text)
+        root.clear
+
     wb.save(filename='instance/uploads/dump.xlsx')
 
 @app.route('/download/update.xlsx', methods=["GET"])
