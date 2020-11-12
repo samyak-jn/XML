@@ -92,26 +92,21 @@ def updateXML(xmlDocument,class_,sites,param_dict):
     root =  tree.getroot().findall('*')[0]
 
     relevent = []
-  
     for elem in tree.findall('//{raml20.xsd}managedObject'):
             site = elem.get('distName').split('/')[1].split('-')[1].strip()
             if elem.attrib['class'].strip().lower()== class_  and (site in sites):
                 relevent.append(elem)
             else:
                 root.remove(elem)
-                
     for elem in relevent:
             for p in elem.findall('{raml20.xsd}p'):
                 if(p.get('name').strip().lower() in param_dict):
                     p.text = param_dict.get(p.get('name').strip().lower())
                 else:
                     elem.remove(p)
-            
-            # For handling list items 
+            # For handling list items
             for param,value in param_for_list.items():
-                
                 items = param.split('-')
-                
                 list_name = items[0].strip().lower()
                 item_name = items[2].strip().lower()
                 try:
@@ -119,21 +114,16 @@ def updateXML(xmlDocument,class_,sites,param_dict):
                 except(ValueError):
                     # case of all
                     item_number = items[1].strip().lower()
-                
-                  
                 for i in elem.findall('{raml20.xsd}list'):
-                
                     if i.get('name').strip().lower()==list_name:
-                        
                         # if a param from all items of a list need to be updated
                         if item_number == "all":
                             for item in i.findall('{raml20.xsd}item'):
                                 for p in item.findall('{raml20.xsd}p'):
                                     if (p.get('name').strip().lower() == item_name.strip().lower()):
-                                        p.text = value              
+                                        p.text = value
                                     if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
                                         item.remove(p)
-                                        
                         # If a particular index of item needs to be updated
                         else:
                             try:
@@ -143,15 +133,14 @@ def updateXML(xmlDocument,class_,sites,param_dict):
                                     if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
                                         i.getchildren()[item_number-1].remove(p)
                             except(IndexError):
-                                # Remove list if item number is wrong 
+                                # Remove list if item number is wrong
                                 print('Index Error for list name:{}'.format(i.get('name')))
                     if (i.get('name').strip().lower() not in [x.split('-')[0].strip().lower() for x in list(param_for_list.keys())]):
                         elem.remove(i)
     et = etree.ElementTree(tree.getroot())
     # print(etree.tostring(tree,encoding="unicode", pretty_print=True))
     et.write('app/download/download.xml', pretty_print=True)
-    return 
-        
+    return
 
 def bulkupdateXML(xmlDocument, inputDocument):
     df = pd.read_csv(inputDocument)
@@ -169,7 +158,7 @@ def bulkupdateXML(xmlDocument, inputDocument):
                 sites = row[0]
                 param_list = {row[2]:str(row[3])}
                 if elem.attrib['class'].strip().lower()== class_ and (site in sites) :
-                    flag = True   
+                    flag = True
                     for i in elem.findall('*'):
                         if i.tag!='{raml20.xsd}p':
                             elem.remove(i)
@@ -240,6 +229,17 @@ def dumpparser(filepath):
                 currently_active_sheet = classname
             rowcol_tracker[classname]['row'] = rowcol_tracker[classname]['row'] + 1
             distName = root.attrib['distName']
+            for d in distName.split('/'):
+                dn = d.split('-')
+                if dn[0] != 'PLMN':
+                    if dn[0] not in parameter_tracker[classname]:
+                        rowcol_tracker[classname]['col'] = rowcol_tracker[classname]['col'] + 1
+                        parameter_tracker[classname][dn[0]] = {}
+                        parameter_tracker[classname][dn[0]] = rowcol_tracker[classname]['col']
+                        ws.cell(1, rowcol_tracker[classname]['col'], dn[0])
+                        ws.cell(rowcol_tracker[classname]['row'], rowcol_tracker[classname]['col'], dn[1])
+                    else:
+                        ws.cell(rowcol_tracker[classname]['row'], parameter_tracker[classname][dn[0]], dn[1])
     wb.save(filename='instance/uploads/dump.xlsx')
 
 @app.route('/download/update.xlsx', methods=["GET"])
@@ -248,6 +248,7 @@ def update_xlsx():
                      mimetype='text/xlsx',
                      attachment_filename='update.xlsx',
                      as_attachment=True)
+
 @app.route('/bulk_process.html', methods = ['POST'])
 def bulk_process():
     doc = xmlDocument+'sample.XML'
