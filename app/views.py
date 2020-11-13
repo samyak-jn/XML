@@ -73,24 +73,19 @@ def xml_to_dataframe(xmlDocument):
         tag = extract_local_tag(elem.tag)
         if event=='start' and tag=='managedObject':
             class_data=[elem.get('class').strip(),elem.get('version').strip(),elem.get('distName').strip(),elem.get('id').strip()]
-        
         if event=='start' and tag=='p':
             data.append(class_data+[elem.get('name'),elem.text])
-            
     df = pd.DataFrame(data,columns=['class','version','distName','id','parameter','value'])
 
     return df
 
 def updateXML(xmlDocument,class_,sites,param_dict):
     param_for_list = {}
-
     for k,v in param_dict.items():
         if '-' in k:
             param_for_list[k] = v
-
     tree = etree.parse(xmlDocument)
     root =  tree.getroot().findall('*')[0]
-
     relevent = []
     for elem in tree.findall('//{raml20.xsd}managedObject'):
             site = elem.get('distName').split('/')[1].split('-')[1].strip()
@@ -141,6 +136,14 @@ def updateXML(xmlDocument,class_,sites,param_dict):
     # print(etree.tostring(tree,encoding="unicode", pretty_print=True))
     et.write('app/download/download.xml', pretty_print=True)
     return
+
+
+def filter_dump(filter_input,dump):
+    # making dataframe of all sheets
+    df_class = pd.read_excel(filter_input, sheet_name = 'Class')
+    df_siteID = pd.read_excel(filter_input, sheet_name='SiteID')
+    df_param = pd.read_excel(filter_input, sheet_name='Parameters')
+    wb.save(filename="app/download/download.xlsx")
 
 def bulkupdateXML(xmlDocument, inputDocument):
     df = pd.read_csv(inputDocument)
