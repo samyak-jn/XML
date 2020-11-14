@@ -277,6 +277,7 @@ def plot_xml():
                      mimetype='text/xml',
                      attachment_filename='result.xml',
                      as_attachment=True)
+
 @app.route('/xml-view',methods = ['POST'])
 def xmlview():
     doc = xmlDocument+'sample.XML'
@@ -296,7 +297,36 @@ def xmlview():
     text_file.write("</body></html>")
     text_file.close() 
     return render_template("public/xml-view.html", class_=class_, site_id=site_id, param_=param_, values=values, param_dict=param_dict)
-    
+
+@app.route('/result',methods = ['POST'])
+def result():
+    if request.method == 'POST':
+        doc = xmlDocument+'sample.XML'
+        print(doc)
+        df = xml_to_dataframe(doc)
+        params = request.form.to_dict()
+        # filtering for class
+        data = df[df['class']==params['class']]
+        cl = params['class'] # 1. class
+        id_ = params['class_id'] # 2.  id for class
+        #filtering for id
+        ids =  data.distName.str.split(cl+'-').str[1].str.split('/').str[0].str.strip()
+        data = data[ids==id_]
+        param = params['param']
+        print(params)
+        if param=='':
+            param = 'All'
+        else:
+            data = data[data.parameter==param]
+        header = list(data.columns)
+        values = data.values
+        table = data.to_html()
+        text_file = open("app/templates/public/result.html", "w") 
+        text_file.write(table)
+        text_file.close() 
+        data.to_csv("app/download/download.csv", index=False)
+        return render_template("public/result.html",cl = cl, id_=id_,param=param,header = header, values=values, table=table)
+
 
 '''
 @app.route('/download/update.xlsx', methods=["GET"])
