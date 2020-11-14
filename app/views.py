@@ -177,34 +177,6 @@ def bulkupdateXML(xmlDocument, inputDocument):
     et.write('app/download/download.xml', pretty_print=True)
     return
 
-
-@app.route('/')
-@app.route('/index')
-def index():
-    return render_template("public/index.html")
-
-
-@app.route("/upload-file.html", methods=["GET", "POST"])
-def upload_file():
-    upload()
-    return render_template("public/upload-file.html")
-
-@app.route('/download/download.xml', methods=["GET"])
-def plot_xml():
-    path = 'app/download/download.xml'
-    return_data = io.BytesIO()
-    with open(path, 'rb') as fo:
-        return_data.write(fo.read())
-    # (after writing, cursor will be at last byte, so move it to start)
-    return_data.seek(0)
-    os.remove(path)
-    clear_uploads('instance/uploads/')
-    print("File Cleared!")
-    return send_file(return_data,
-                     mimetype='text/xml',
-                     attachment_filename='result.xml',
-                     as_attachment=True)
-
 def dumpparser(filepath):
     parameter_tracker = {}
     rowcol_tracker = {}
@@ -279,12 +251,61 @@ def dumpparser(filepath):
 
     wb.save(filename='instance/uploads/dump.xlsx')
 
+@app.route('/')
+@app.route('/index')
+def index():
+    return render_template("public/index.html")
+
+
+@app.route("/upload-file.html", methods=["GET", "POST"])
+def upload_file():
+    upload()
+    return render_template("public/upload-file.html")
+
+@app.route('/download/download.xml', methods=["GET"])
+def plot_xml():
+    path = 'app/download/download.xml'
+    return_data = io.BytesIO()
+    with open(path, 'rb') as fo:
+        return_data.write(fo.read())
+    # (after writing, cursor will be at last byte, so move it to start)
+    return_data.seek(0)
+    os.remove(path)
+    clear_uploads('instance/uploads/')
+    print("File Cleared!")
+    return send_file(return_data,
+                     mimetype='text/xml',
+                     attachment_filename='result.xml',
+                     as_attachment=True)
+@app.route('/xml-view',methods = ['POST'])
+def xmlview():
+    doc = xmlDocument+'sample.XML'
+    params = request.form.to_dict()
+    class_=params.get('class_').strip().lower()
+    site_id=params.get('site_id').split(',')
+    param_=params.get('param_').split(',')
+    values=params.get('values').split(',')
+    param_dict= {param_[i].strip().lower(): values[i] for i in range(len(param_))}
+    updateXML(doc,class_,site_id,param_dict)
+    down = "app/download/download.xml"
+    f = open(down, "r")
+    check = str(f.read())
+    text_file = open("app/templates/public/xml-view.html", "w") 
+    text_file.write("<!DOCTYPE HTML><html><body>")
+    text_file.write(check)
+    text_file.write("</body></html>")
+    text_file.close() 
+    return render_template("public/xml-view.html", class_=class_, site_id=site_id, param_=param_, values=values, param_dict=param_dict)
+    
+
+'''
 @app.route('/download/update.xlsx', methods=["GET"])
 def update_xlsx():
     return send_file('download/update.xlsx',
                      mimetype='text/xlsx',
                      attachment_filename='update.xlsx',
                      as_attachment=True)
+
 
 @app.route('/bulk_process.html', methods = ['POST'])
 def bulk_process():
@@ -295,7 +316,7 @@ def bulk_process():
 
     d = open(download_option, "r")
     download = str(d.read())
-    text_file = open("app/templates/public/final_xml.html", "w") 
+    text_file = open("app/templates/public/final_xml.html", "w")
     text_file.write(download)
-    text_file.close() 
-
+    text_file.close()
+'''
