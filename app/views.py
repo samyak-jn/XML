@@ -328,6 +328,33 @@ def result():
         return render_template("public/result.html",cl = cl, id_=id_,param=param,header = header, values=values, table=table)
 
 
+@app.route('/heavy_update.html',methods=["GET", "POST"])
+def heavy_update():
+    upload()
+    return render_template("public/heavy_update.html")
+
+@app.route('/bulk_process.html', methods = ['POST'])
+def bulk_process():
+    doc = xmlDocument+'sample.XML'
+    input_format = xmlDocument+'input.xlsx'
+    input_xlsx= xmlDocument+'dump.xlsx'
+    dumpparser(doc)
+    filter_dump(input_format, input_xlsx)
+    return render_template('public/heavy_update.html')
+
+@app.route('/process_xml.html',methods=["GET", "POST"])
+def process_xml():
+    upload()
+    return render_template("public/process_xml.html")
+
+@app.route('/final_xml.html', methods = ["GET", 'POST'])
+def final_xml():
+    #Returning final XML
+    doc = xmlDocument+'sample.XML'
+    updated_filter = xmlDocument+'update_format.xlsx'
+    create_XML(updated_filter, doc)
+    return render_template('public/final_xml.html')
+
 '''
 @app.route('/download/update.xlsx', methods=["GET"])
 def update_xlsx():
