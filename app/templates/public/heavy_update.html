@@ -1,0 +1,82 @@
+<!doctype html>
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+
+  
+  <link rel="stylesheet" href="{{ url_for('static',filename='bootstrap.min.css') }}">
+  
+  <link rel="stylesheet" href="{{ url_for('static',filename='bootstrap-social.css') }}">
+
+ <title>XML Parser</title>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="row">
+    <div class="col">
+
+      <h1>Step 1: CRUD BULK UPDATE</h1>
+      <hr>
+
+      <form action="http://127.0.0.1:5000/heavy_update.html" method="POST" enctype="multipart/form-data">
+        <div class="form-row">
+          <div class="form-group col-md-7">
+            <label>Select XML File</label>
+            <div class="custom-file">
+              <input type="file" class="custom-file-input" name="file">
+              <label class="custom-file-label" for="file">Select File...</label>
+            </div>
+        
+            <button type="submit" class="form-group btn col-md-3" value="Upload">Upload</button>
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                    {{message}}
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+          </div>
+        </div>
+      </form>
+
+      <form action="http://127.0.0.1:5000/heavy_update.html" method="POST" enctype="multipart/form-data">
+        <div class="form-row">
+          <div class="form-group col-md-7">
+            <label>Select XLSX File</label>
+            <div class="custom-file">
+              <input type="file" class="custom-file-input" name="file">
+              <label class="custom-file-label" for="file">Select File...</label>
+            </div>
+        
+            <button type="submit" class="form-group btn col-md-3" value="Upload">Upload</button>
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                    {{message}}
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+          </div>
+        </div>
+      </form>
+      <form action="http://127.0.0.1:5000/bulk_process.html" method="POST">
+        <br>
+           <input type="submit" class="btn btn-primary col-md-6" value="Process">
+      </form>
+      <br>
+      <div class ="download">
+        <form action="http://127.0.0.1:5000/download/download.xlsx">
+          <input type="submit" class="btn btn-primary col-md-6" value="Download">
+        </form>
+      </div>
+
+<a href="process_xml.html">Proceed to Step 2 after adding operation to your excel file!</a>
+<br>
+<a href="index"> Go back to home page</a>
+</div>
+</body>
+</html>
