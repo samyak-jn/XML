@@ -371,6 +371,22 @@ def plot_xlsx():
                      attachment_filename='result.xlsx',
                      as_attachment=True)
 
+@app.route('/download/download.csv', methods=["GET"])
+def plot_csv():
+    path = 'app/download/download.csv'
+    return_data = io.BytesIO()
+    with open(path, 'rb') as fo:
+        return_data.write(fo.read())
+    # (after writing, cursor will be at last byte, so move it to start)
+    return_data.seek(0)
+    os.remove(path)
+    clear_uploads('instance/uploads/')
+    print("File Cleared!")
+    return send_file(return_data,
+                     mimetype='text/csv',
+                     attachment_filename='result.csv',
+                     as_attachment=True)
+
 '''
 @app.route('/download/update.xlsx', methods=["GET"])
 def update_xlsx():
