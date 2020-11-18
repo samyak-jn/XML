@@ -355,6 +355,22 @@ def final_xml():
     create_XML(updated_filter, doc)
     return render_template('public/final_xml.html')
 
+@app.route('/download/download.xlsx', methods=["GET"])
+def plot_xlsx():
+    path = 'app/download/download.xlsx'
+    return_data = io.BytesIO()
+    with open(path, 'rb') as fo:
+        return_data.write(fo.read())
+    # (after writing, cursor will be at last byte, so move it to start)
+    return_data.seek(0)
+    os.remove(path)
+    clear_uploads('instance/uploads/')
+    print("File Cleared!")
+    return send_file(return_data,
+                     mimetype='text/xlsx',
+                     attachment_filename='result.xlsx',
+                     as_attachment=True)
+
 '''
 @app.route('/download/update.xlsx', methods=["GET"])
 def update_xlsx():
