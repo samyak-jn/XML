@@ -78,85 +78,89 @@ def xml_to_dataframe(xmlDocument):
         tag = extract_local_tag(elem.tag)
         if event=='start' and tag=='managedObject':
             class_data=[elem.get('class').strip(),elem.get('version').strip(),elem.get('distName').strip(),elem.get('id').strip()]
-        
         if event=='start' and tag=='p':
             data.append(class_data+[elem.get('name'),elem.text])
-            
     df = pd.DataFrame(data,columns=['class','version','distName','id','parameter','value'])
 
     return df
 
-def updateXML(xmlDocument,class_,sites,param_dict):
+def updateXML(xmlDocument,class_=None,sites=None,param_dict=None,cells=None):
     param_for_list = {}
-
-    for k,v in param_dict.items():
-        if '-' in k:
-            param_for_list[k] = v
+    if param_dict!=None:
+        for k,v in param_dict.items():
+            if '-' in k:
+                param_for_list[k] = v
 
     tree = etree.parse(xmlDocument)
-    root =  tree.getroot().findall('*')[0]
+    root = tree.getroot().findall('*')[0]
 
     relevent = []
   
     for elem in tree.findall('//{raml20.xsd}managedObject'):
             site = elem.get('distName').split('/')[1].split('-')[1].strip()
-            if elem.attrib['class'].strip().lower()== class_  and (site in sites):
+            if class_ is not None:
+                cell = elem.get('distName').lower().split(class_+'-')[-1]
+            else:
+                cell = elem.get('distName').lower().split('-')[-1]
+       #     cell = elem.get('distName').lower().split(class_+'-')[-1]
+
+            if ((class_ is None )or(elem.attrib['class'].strip().lower()== class_ )) and (((sites is None)or(site in 
+sites))and((cells is None)or(cell in cells))):
                 relevent.append(elem)
             else:
                 root.remove(elem)
-                
-    for elem in relevent:
-            for p in elem.findall('{raml20.xsd}p'):
-                if(p.get('name').strip().lower() in param_dict):
-                    p.text = param_dict.get(p.get('name').strip().lower())
-                else:
-                    elem.remove(p)
-            
-            # For handling list items 
-            for param,value in param_for_list.items():
-                
-                items = param.split('-')
-                
-                list_name = items[0].strip().lower()
-                item_name = items[2].strip().lower()
-                try:
-                    item_number = int(items[1])
-                except(ValueError):
-                    # case of all
-                    item_number = items[1].strip().lower()
-                
-                  
-                for i in elem.findall('{raml20.xsd}list'):
-                
-                    if i.get('name').strip().lower()==list_name:
-                        
-                        # if a param from all items of a list need to be updated
-                        if item_number == "all":
-                            for item in i.findall('{raml20.xsd}item'):
-                                for p in item.findall('{raml20.xsd}p'):
-                                    if (p.get('name').strip().lower() == item_name.strip().lower()):
-                                        p.text = value              
-                                    if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
-                                        item.remove(p)
-                                        
-                        # If a particular index of item needs to be updated
-                        else:
-                            try:
-                                for p in (i.getchildren()[item_number-1].findall('{raml20.xsd}p')):
-                                    if (p.get('name').strip().lower() == item_name.strip().lower()):
-                                        p.text = value
-                                    if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
-                                        i.getchildren()[item_number-1].remove(p)
-                            except(IndexError):
-                                # Remove list if item number is wrong 
-                                print('Index Error for list name:{}'.format(i.get('name')))
-                    if (i.get('name').strip().lower() not in [x.split('-')[0].strip().lower() for x in list(param_for_list.keys())]):
-                        elem.remove(i)
+    if param_dict is not None:
+        for elem in relevent:
+                for p in elem.findall('{raml20.xsd}p'):
+                    if(p.get('name').strip().lower() in param_dict):
+                        p.text = param_dict.get(p.get('name').strip().lower())
+                    else:
+                        elem.remove(p)
+                # For handling list items
+                if len(param_for_list)==0:
+                    for l in elem.findall('{raml20.xsd}list'):
+                        elem.remove(l)
+                for param,value in param_for_list.items():
+                    items = param.split('-')
+                    list_name = items[0].strip().lower()
+                    item_name = items[2].strip().lower()
+                    try:
+                        item_number = int(items[1])
+                    except(ValueError):
+                        # case of all
+                        item_number = items[1].strip().lower()
+
+
+                    for i in elem.findall('{raml20.xsd}list'):
+
+                        if i.get('name').strip().lower()==list_name:
+
+                            # if a param from all items of a list need to be updated
+                            if item_number == "all":
+                                for item in i.findall('{raml20.xsd}item'):
+                                    for p in item.findall('{raml20.xsd}p'):
+                                        if (p.get('name').strip().lower() == item_name.strip().lower()):
+                                            p.text = value
+                                        if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
+                                            item.remove(p)
+
+                            # If a particular index of item needs to be updated
+                            else:
+                                try:
+                                    for p in (i.getchildren()[item_number-1].findall('{raml20.xsd}p')):
+                                        if (p.get('name').strip().lower() == item_name.strip().lower()):
+                                            p.text = value
+                                        if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
+                                            i.getchildren()[item_number-1].remove(p)
+                                except(IndexError):
+                                    # Remove list if item number is wrong 
+                                    print('Index Error for list name:{}'.format(i.get('name')))
+                        if (i.get('name').strip().lower() not in [x.split('-')[0].strip().lower() for x in list(param_for_list.keys())]):
+                            elem.remove(i)
     et = etree.ElementTree(tree.getroot())
-    # print(etree.tostring(tree,encoding="unicode", pretty_print=True))
+   # print(etree.tostring(tree,encoding="unicode", pretty_print=True))
     et.write('app/download/download.xml', pretty_print=True)
-    return 
-        
+    return
 
 def bulkupdateXML(xmlDocument, inputDocument):
     df = pd.read_csv(inputDocument)
