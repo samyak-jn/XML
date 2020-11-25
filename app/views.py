@@ -95,7 +95,6 @@ def updateXML(xmlDocument,class_=None,sites=None,param_dict=None,cells=None):
     root = tree.getroot().findall('*')[0]
 
     relevent = []
-  
     for elem in tree.findall('//{raml20.xsd}managedObject'):
             site = elem.get('distName').split('/')[1].split('-')[1].strip()
             if class_ is not None:
@@ -194,7 +193,6 @@ def bulkupdateXML(xmlDocument, inputDocument):
     et.write('app/download/download.xml', pretty_print=True)
     return
 
-
 def dumpparser(filepath):
     parameter_tracker = {}
     rowcol_tracker = {}
@@ -204,7 +202,7 @@ def dumpparser(filepath):
     dest_filename = str('dump_' + str(dt_string) + '.xlsx')
     wb = Workbook()
     ws = ''
-    context = etree.iterparse(filepath, events=('start', 'end'))
+    context = et.iterparse(filepath, events=('start', 'end'))
     for event,root in context:
         namespace = get_namespace(root)
         if event == "end" and root.tag == str(namespace + 'managedObject'):
@@ -221,6 +219,24 @@ def dumpparser(filepath):
                 ws = wb[classname]
                 currently_active_sheet = classname
             rowcol_tracker[classname]['row'] = rowcol_tracker[classname]['row'] + 1
+            id_ = root.attrib['id']
+            if 'id' not in parameter_tracker[classname]:
+                rowcol_tracker[classname]['col'] = rowcol_tracker[classname]['col'] + 1
+                parameter_tracker[classname]['id'] = {}
+                parameter_tracker[classname]['id'] = rowcol_tracker[classname]['col']
+                ws.cell(1, rowcol_tracker[classname]['col'], 'id')
+                ws.cell(rowcol_tracker[classname]['row'], rowcol_tracker[classname]['col'], id_)
+            else:
+                ws.cell(rowcol_tracker[classname]['row'], parameter_tracker[classname]['id'], id_)
+            version = root.attrib['version']
+            if 'version' not in parameter_tracker[classname]:
+                rowcol_tracker[classname]['col'] = rowcol_tracker[classname]['col'] + 1
+                parameter_tracker[classname]['version'] = {}
+                parameter_tracker[classname]['version'] = rowcol_tracker[classname]['col']
+                ws.cell(1, rowcol_tracker[classname]['col'], 'version')
+                ws.cell(rowcol_tracker[classname]['row'], rowcol_tracker[classname]['col'], version)
+            else:
+                ws.cell(rowcol_tracker[classname]['row'], parameter_tracker[classname]['version'], version)
             distName = root.attrib['distName']
             for d in distName.split('/'):
                 dn = d.split('-')
@@ -266,10 +282,10 @@ def dumpparser(filepath):
                         ws.cell(1, rowcol_tracker[classname]['col'], pconcat)
                     ws.cell(rowcol_tracker[classname]['row'], parameter_tracker[classname][pconcat], p.text)
         root.clear
+    del wb["Sheet"]
     wb.save(filename='instance/uploads/dump.xlsx')
 
 def filter_dump(filter_input,dump):
-    
     # making dataframe of all sheets
     df_class = pd.read_excel(filter_input, sheet_name = 'Class')
     df_siteID = pd.read_excel(filter_input, sheet_name='SiteID')
