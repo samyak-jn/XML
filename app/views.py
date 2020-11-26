@@ -326,50 +326,63 @@ def filter_dump(filter_input,dump):
                 break
     wb.save(filename="app/download/download.xlsx")
 
-def create_XML(updated_filter,xmlDocument):
+def create_XML(updated_filter,xmlDocument=None,dist_init='PLMN-PLMN'):
     
     wb = openpyxl.load_workbook(updated_filter)
     sheet_names = wb.sheetnames
     
-    
     # getting the XML tree structure
-    tree = et.parse(xmlDocument)
+    if xmlDocument is None:
+        xmlstring ='<!DOCTYPE raml SYSTEM "raml20.dtd"><raml xmlns="raml20.xsd" version="2.0"><cmData type="plan" scope="all" name="updated_xml.xml"><header> <log dateTime="%s" action="created" appInfo="PlanExporter"/></header></cmData></raml>'%(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
+        tree = et.ElementTree(et.fromstring(xmlstring))
+    else:
+        tree = et.parse(xmlDocument)
     
     #extracting root of xml
     root =  tree.getroot().findall('*')[0]
-
+    
+    if len(sheet_names)==1:
+        if len(pd.read_excel(updated_filter))==0:
+            root = et.ElementTree(tree.getroot())
+            root.write('app/download/download.xml', pretty_print=True)
+            return 
     namespace = get_namespace(root)
-    distName_init = root.findall('*')[1].get('distName').split('/')[0]
-
+    if xmlDocument!=None:
+        distName_init = root.findall('*')[1].get('distName').split('/')[0]
+    else:
+        distName_init = dist_init
     #removing all MOs
     et.strip_elements(tree,namespace+'managedObject')
-
-    
-    
     for sheet_name in sheet_names:
         sheet = pd.read_excel(updated_filter,sheet_name=sheet_name)
+        if 'operation' not in  sheet.columns:
+            continue
 
         for row in range(len(sheet)):
             
             # getting operation and its column location 
-            operation = sheet.loc[row,'operation']
+            operation = str(sheet.loc[row,'operation'])
+            if operation =="nan":
+                continue
+            id_ = str(sheet.loc[row,'id'])
+            version = str(sheet.loc[row,'version'])
             class_ind = sheet.columns.get_loc("operation")
             dist_list = []
             
             # creating distName acording to given class' hierarchy
-            for i in range(class_ind):
+            for i in range(2,class_ind):
                 dist_list.append('-'.join([sheet.columns[i],str(sheet.iloc[row,i])]))
 
             distName='/'.join([distName_init]+dist_list)
 
             # creating an MO 
-            mo = et.SubElement(root,namespace+'managedObject',attrib={'operation':operation,'distName':distName,'class':sheet.columns[class_ind-1]})
+            mo = et.SubElement(root,namespace+'managedObject',attrib={'operation':operation,'distName':distName,'class':sheet.columns[class_ind-1],'version':version,'id':id_})
             
             # iterating through each parameter
             for param,value in sheet.iloc[row,class_ind+1:].items():
-                if type(value) != str:
-                    if math.isnan(value):
-                        continue
+                
+                if type(value)!=str and  math.isnan(value):
+                    continue
                     
                 # if parameter is part of a list
                 if len(param.split(':'))==3:
@@ -377,7 +390,6 @@ def create_XML(updated_filter,xmlDocument):
                     listName = param.split(':')[0]
                     item = param.split(':')[1].split('item')[1]
                     par = param.split(':')[2]
-                    
                     
                     l = mo.find(namespace+'list[@name="%s"]'%listName)
                     # if list not already in the MO
@@ -389,20 +401,27 @@ def create_XML(updated_filter,xmlDocument):
                     else:
                               item = et.SubElement(l,namespace+'item',attrib={'num':item})
                               et.SubElement(item,namespace+'p',attrib={'name': par }).text=str(value)
+                elif len(param.split(':'))==2:
+                    listName = param.split(':')[0]
+                    p = param.split(':')[1].split('p')[1]
+                    l = mo.find(namespace+'list[@name="%s"]'%listName)
+                    if l==None:
+                        l = et.SubElement(mo,namespace+'list',attrib={'name':listName})
+                    et.SubElement(l,namespace+'p',attrib={'num': p }).text=str(value)
                 else:
                     et.SubElement(mo,namespace+'p',attrib={'name': param }).text=str(value)
 
             for item in mo.findall('.//'+namespace+'item'):
-                              item.attrib.pop("num",None)
-    
-    
-    root = etree.ElementTree(tree.getroot())
+                item.attrib.pop("num",None)
+            for p in mo.findall('.//'+namespace+'list/'+namespace+'p'):
+                p.attrib.pop("num",None)
+    root = et.ElementTree(tree.getroot())
     root.write('app/download/download.xml', pretty_print=True)
 
 def clear_uploads(path):
     for file in os.listdir(path):
         os.remove(path+file)
-    
+
 @app.route('/')
 @app.route('/index')
 def index():
@@ -414,7 +433,6 @@ def upload_file():
     upload()
     return render_template("public/upload-file.html")
 
-            
 @app.route('/result',methods = ['POST'])
 def result():
     if request.method == 'POST':
