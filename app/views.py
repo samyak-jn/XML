@@ -16,12 +16,16 @@ import re
 import openpyxl
 from lxml import etree as et
 import math
+import datetime
 import io
+from xlrd import XLRDError
+from flask import session
 
 app.secret_key = "super secret key"
 app.config["ALLOWED_FILE_EXTENSIONS"] = {"XML", "CSV", "XLSX", "xlsx"}
 app.config['MAX_CONTENT_LENGTH'] = 700 * 1024 * 1024
 xmlDocument = r'instance/uploads/'
+
 
 def get_namespace(element):
     m = re.match('\{.*\}', element.tag)
@@ -59,7 +63,7 @@ def upload():
                 filename = secure_filename(file.filename)
                 os.makedirs(os.path.join(app.instance_path, 'uploads'), exist_ok=True)
                 file.save(os.path.join(app.instance_path, 'uploads', secure_filename(filename)))
-                print("File Saved")
+                flash("File Saved")
                 return redirect(url_for('upload_file',filename=filename))
             else:
                 print("That file extension is not allowed.")
@@ -78,8 +82,10 @@ def xml_to_dataframe(xmlDocument):
         tag = extract_local_tag(elem.tag)
         if event=='start' and tag=='managedObject':
             class_data=[elem.get('class').strip(),elem.get('version').strip(),elem.get('distName').strip(),elem.get('id').strip()]
+        
         if event=='start' and tag=='p':
             data.append(class_data+[elem.get('name'),elem.text])
+            
     df = pd.DataFrame(data,columns=['class','version','distName','id','parameter','value'])
 
     return df
@@ -95,6 +101,7 @@ def updateXML(xmlDocument,class_=None,sites=None,param_dict=None,cells=None):
     root = tree.getroot().findall('*')[0]
 
     relevent = []
+  
     for elem in tree.findall('//{raml20.xsd}managedObject'):
             site = elem.get('distName').split('/')[1].split('-')[1].strip()
             if class_ is not None:
@@ -103,19 +110,18 @@ def updateXML(xmlDocument,class_=None,sites=None,param_dict=None,cells=None):
                 cell = elem.get('distName').lower().split('-')[-1]
        #     cell = elem.get('distName').lower().split(class_+'-')[-1]
 
-            if ((class_ is None )or(elem.attrib['class'].strip().lower()== class_ )) and (((sites is None)or(site in 
-sites))and((cells is None)or(cell in cells))):
+            if ((class_ is None )or(elem.attrib['class'].strip().lower()== class_ )) and (((sites is None)or(site in sites))and((cells is None)or(cell in cells))):
                 relevent.append(elem)
             else:
                 root.remove(elem)
-    if param_dict is not None:
+    if param_dict is not None:      
         for elem in relevent:
                 for p in elem.findall('{raml20.xsd}p'):
                     if(p.get('name').strip().lower() in param_dict):
                         p.text = param_dict.get(p.get('name').strip().lower())
                     else:
                         elem.remove(p)
-                # For handling list items
+                # For handling list items 
                 if len(param_for_list)==0:
                     for l in elem.findall('{raml20.xsd}list'):
                         elem.remove(l)
@@ -139,7 +145,7 @@ sites))and((cells is None)or(cell in cells))):
                                 for item in i.findall('{raml20.xsd}item'):
                                     for p in item.findall('{raml20.xsd}p'):
                                         if (p.get('name').strip().lower() == item_name.strip().lower()):
-                                            p.text = value
+                                            p.text = value              
                                         if p.get('name').strip().lower() not in [x.split('-')[2].strip().lower() for x in list(param_for_list.keys())]:
                                             item.remove(p)
 
@@ -160,6 +166,7 @@ sites))and((cells is None)or(cell in cells))):
    # print(etree.tostring(tree,encoding="unicode", pretty_print=True))
     et.write('app/download/download.xml', pretty_print=True)
     return
+        
 
 def bulkupdateXML(xmlDocument, inputDocument):
     df = pd.read_csv(inputDocument)
@@ -192,6 +199,7 @@ def bulkupdateXML(xmlDocument, inputDocument):
     #print(etree.tostring(tree,encoding="unicode", pretty_print=True))
     et.write('app/download/download.xml', pretty_print=True)
     return
+
 
 def dumpparser(filepath):
     parameter_tracker = {}
@@ -249,6 +257,7 @@ def dumpparser(filepath):
                         ws.cell(rowcol_tracker[classname]['row'], rowcol_tracker[classname]['col'], dn[1])
                     else:
                         ws.cell(rowcol_tracker[classname]['row'], parameter_tracker[classname][dn[0]], dn[1])
+            
             for p in root.findall(str(namespace + 'p')):
                 pname = p.attrib['name']
                 if pname not in parameter_tracker[classname]:
@@ -287,43 +296,76 @@ def dumpparser(filepath):
 
 def filter_dump(filter_input,dump):
     # making dataframe of all sheets
-    df_class = pd.read_excel(filter_input, sheet_name = 'Class')
-    df_siteID = pd.read_excel(filter_input, sheet_name='SiteID')
-    df_param = pd.read_excel(filter_input, sheet_name='Parameters')
+    try:
+        df_class = pd.read_excel(filter_input, sheet_name = 'Class')
+    except XLRDError:
+        df_class=None
+    try:
+        df_siteID = pd.read_excel(filter_input, sheet_name='SiteID')
+    except XLRDError:
+        df_siteID=None
+    try:
+        df_param = pd.read_excel(filter_input, sheet_name='Parameters')
+    except XLRDError:
+        df_param=None
     #extracting class, site_id and parameters to be filtered
-    class_list = df_class['Class'].tolist()
-    siteid_list1 = df_siteID['SiteID'].tolist()
-    siteid_list = list(map(str, siteid_list1)) # converting site id to string
-    param_list = df_param['parameter'].tolist()
-    param_list = [i.lower() for i in param_list]
+    if df_class is None:
+        class_list=[]
+    else:
+        class_list = df_class['Class'].tolist()
+        
+    if df_siteID is None:
+        siteid_list=[]
+    else:
+        siteid_list1 = df_siteID['SiteID'].tolist()
+        siteid_list = list(map(str, siteid_list1)) # converting site id to string
+    
+    if df_param is None:
+        param_list=[]
+    else:
+        param_list = df_param['parameter'].tolist()
+        param_list = [i.lower() for i in param_list]
     wb = openpyxl.load_workbook(dump)
     sheet_names = wb.sheetnames
+
+    
     #deleting irrelevent sheets in dump
-    for i in sheet_names:
-        if i not in class_list:
-            del wb[i]
+    if len(class_list)!=0:
+        for i in sheet_names:
+            if i not in class_list:
+                del wb[i]
     for sheet in wb.sheetnames:
+        if sheet=='Sheet':
+            del wb["Sheet"]
+            continue
         ws = wb[sheet]
         r = 2
-        while r <= ws.max_row:
-            if ws.cell(row=r, column=1).value not in siteid_list:
-                ws.delete_rows(r, 1)
-            else:
-                r += 1
-        c = 1
-        while c <= ws.max_column:
-            if (ws.cell(row=1, column=c).value.lower() not in param_list) and not ws.cell(row=1, column=c).value.isupper():
-                ws.delete_cols(c)
-            else:
-                c += 1
-        c = 1
+        if len(siteid_list)!=0:
+            while r <= ws.max_row:
+                if ws.cell(row=r, column=3).value not in siteid_list:
+                    ws.delete_rows(r, 1)
+                else:
+                    r += 1
+        if len(param_list) != 0:
+            c = 3
+            while c <= ws.max_column:
+                if (ws.cell(row=1, column=c).value.lower() not in param_list) and not ws.cell(row=1, column=c).value.isupper():
+                    ws.delete_cols(c)
+                else:
+                    c += 1
+        c = 3
+        flag = False
         while c <= ws.max_column:
             if ws.cell(row=1, column=c).value.isupper():
                 c += 1
             else:
                 ws.insert_cols(c)
                 ws.cell(row=1,column=c).value = 'operation'
+                flag = True
                 break
+        if not flag:
+            del wb[sheet]
+
     wb.save(filename="app/download/download.xlsx")
 
 def create_XML(updated_filter,xmlDocument=None,dist_init='PLMN-PLMN'):
@@ -402,12 +444,16 @@ def create_XML(updated_filter,xmlDocument=None,dist_init='PLMN-PLMN'):
                               item = et.SubElement(l,namespace+'item',attrib={'num':item})
                               et.SubElement(item,namespace+'p',attrib={'name': par }).text=str(value)
                 elif len(param.split(':'))==2:
+                    
                     listName = param.split(':')[0]
                     p = param.split(':')[1].split('p')[1]
+                    
                     l = mo.find(namespace+'list[@name="%s"]'%listName)
+                    
                     if l==None:
                         l = et.SubElement(mo,namespace+'list',attrib={'name':listName})
                     et.SubElement(l,namespace+'p',attrib={'num': p }).text=str(value)
+                
                 else:
                     et.SubElement(mo,namespace+'p',attrib={'name': param }).text=str(value)
 
@@ -415,13 +461,15 @@ def create_XML(updated_filter,xmlDocument=None,dist_init='PLMN-PLMN'):
                 item.attrib.pop("num",None)
             for p in mo.findall('.//'+namespace+'list/'+namespace+'p'):
                 p.attrib.pop("num",None)
+    
+     
     root = et.ElementTree(tree.getroot())
     root.write('app/download/download.xml', pretty_print=True)
 
 def clear_uploads(path):
     for file in os.listdir(path):
         os.remove(path+file)
-
+    
 @app.route('/')
 @app.route('/index')
 def index():
@@ -430,9 +478,11 @@ def index():
 
 @app.route("/upload-file.html", methods=["GET", "POST"])
 def upload_file():
+    session.pop('_flashes', None)
     upload()
     return render_template("public/upload-file.html")
 
+            
 @app.route('/result',methods = ['POST'])
 def result():
     if request.method == 'POST':
@@ -467,20 +517,34 @@ def xmlview():
     doc = xmlDocument+'sample.XML'
     params = request.form.to_dict()
     class_=params.get('class_').strip().lower()
+    if class_=='':
+        class_=None
     site_id=params.get('site_id').split(',')
+    if site_id=='':
+        site_id=None
+    cell_id=params.get('cell_id').split(',')
+    if cell_id=='':
+        cell_id=None    
     param_=params.get('param_').split(',')
     values=params.get('values').split(',')
-    param_dict= {param_[i].strip().lower(): values[i] for i in range(len(param_))}
-    updateXML(doc,class_,site_id,param_dict)
-    return render_template("public/xml-view.html", class_=class_, site_id=site_id, param_=param_, values=values, param_dict=param_dict)
+    if(len(param_)!=0):
+        param_dict= {param_[i].strip().lower(): values[i] for i in range(len(param_))}
+    else:
+        param_dict=None
+    updateXML(doc,class_=class_,sites=site_id,param_dict=param_dict, cells=cell_id)
+    print(type(class_))
+    print(f"{class_},site id {site_id},Param Dict{param_dict}, Cell ID{cell_id}")
+    return render_template("public/xml-view.html", class_=class_, site_id=site_id, cell_id=cell_id, param_=param_, values=values, param_dict=param_dict)
 
 @app.route('/update.html',methods=["GET", "POST"])
 def update():
+    session.pop('_flashes', None)
     upload()
     return render_template("public/update.html")
 
 @app.route('/heavy_update.html',methods=["GET", "POST"])
 def heavy_update():
+    session.pop('_flashes', None)
     upload()
     return render_template("public/heavy_update.html")
 
@@ -495,16 +559,18 @@ def bulk_process():
 
 @app.route('/process_xml.html',methods=["GET", "POST"])
 def process_xml():
+    session.pop('_flashes', None)
     upload()
-    flash("XML file uploaded!")
     return render_template("public/process_xml.html")
 
 @app.route('/final_xml.html', methods = ["GET", 'POST'])
 def final_xml():
     #Returning final XML
     doc = xmlDocument+'sample.XML'
+    if not os.path.exists(doc):
+        doc=None
     updated_filter = xmlDocument+'update_format.xlsx'
-    create_XML(updated_filter, doc)
+    create_XML(updated_filter, xmlDocument=doc)
     return render_template('public/final_xml.html')
 
 @app.route('/download/download.csv', methods=["GET"])
