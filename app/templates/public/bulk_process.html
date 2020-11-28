@@ -4,18 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
-  
-    
     <link rel="stylesheet" href="{{ url_for('static',filename='bootstrap.min.css') }}">
-    
     <link rel="stylesheet" href="{{ url_for('static',filename='bootstrap-social.css') }}">
-  
    <title>Download your XML</title>
   </head>
 <body>
 <div class="container">
 <div class ="download">
-    <form action="https://xml-extractor.herokuapp.com/download/download.xml">
+    <form action="http://127.0.0.1:5000/download/download.xml">
       <input type="submit" class="btn btn-primary col-md-6" value="Download">
     </form>
   </div>
@@ -24,4 +20,3 @@
 <a href="index"> Go back to home page</a>
 </body>
 </html>
-
