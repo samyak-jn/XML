@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta http-equiv="x-ua-compatible" content="ie=edge">
 
-  
   <link rel="stylesheet" href="{{ url_for('static',filename='bootstrap.min.css') }}">
-  
   <link rel="stylesheet" href="{{ url_for('static',filename='bootstrap-social.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.7.1/min/dropzone.min.css">
 
  <title>XML Parser</title>
 </head>
@@ -22,44 +21,33 @@
       <h1>Step 2: CRUD BULK UPDATE</h1>
       <hr>
 
-      <form action="https://xml-extractor.herokuapp.com/process_xml.html" method="POST" enctype="multipart/form-data">
+      <form action="http://127.0.0.1:5000/process_xml.html" method="POST" enctype="multipart/form-data" class="dropzone">
         <div class="form-row">
           <div class="form-group col-md-7">
-            <label>Select XML File</label>
-            <div class="custom-file">
-              <input type="file" class="custom-file-input" name="file">
-              <label class="custom-file-label" for="file">Select File...</label>
+            <label><strong><u>Select XML File</u></strong></label>
             </div>
-        
-            <button type="submit" class="form-group btn col-md-3" value="Upload">Upload</button>
-          </div>
         </div>
       </form>
 
  
-      <form action="https://xml-extractor.herokuapp.com/process_xml.html" method="POST" enctype="multipart/form-data">
+      <form action="http://127.0.0.1:5000/process_xml.html" method="POST" enctype="multipart/form-data" class="dropzone">
         <div class="form-row">
           <div class="form-group col-md-7">
-            <label>Select your XLSX File with updated actions</label>
-            <div class="custom-file">
-              <input type="file" class="custom-file-input" name="file">
-              <label class="custom-file-label" for="file">Select File...</label>
-            </div>
-        
-            <button type="submit" class="form-group btn col-md-3" value="Upload">Upload</button>
+            <label><strong><u>Select your XLSX File with updated actions</u></strong></label>
           </div>
         </div>
       </form>
     </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.7.1/min/dropzone.min.js"></script>
   
-  <form action="https://xml-extractor.herokuapp.com/final_xml.html" method="POST">
+  <form action="http://127.0.0.1:5000/final_xml.html" method="POST">
    <br>
     <input type="submit" class="btn btn-primary col-md-6" value="Process">
   </form>
   <br>
   <div class ="download">
-    <form action="https://xml-extractor.herokuapp.com/download/download.xml">
+    <form action="http://127.0.0.1:5000/download/download.xml">
       <input type="submit" class="btn btn-primary col-md-6" value="Download">
     </form>
   </div>
